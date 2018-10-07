@@ -19,7 +19,10 @@ import org.lwjgl.opengl.GL11;
 import static org.lwjgl.opengl.GL11.*;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.TrueTypeFont;
-import static ag.core.GeneticAlgorithmStats.NUMBER_OF_POINTS;
+import static ag.core.GeneticAlgorithmStats.*;
+import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -31,24 +34,38 @@ public class ApplicationDisplay {
     private static final double PLOT_RIGHT_BOUND = 780D;
     private static final double PLOT_UP_BOUND = 20D;
     private static final double PLOT_DOWN_BOUND = 280D;
-    private TrueTypeFont consoleFont;
+    private static final char X_AXIS = 'x';
+    private static final char Y_AXIS = 'y';
+    private static final DecimalFormat decimal = new DecimalFormat(".##");
+    private TrueTypeFont consoleFont12;
+    private TrueTypeFont consoleFont8;
     private String fontName;
     private GeneticAlgorithmStats stats;
     private GeneticAlgorithm heuristic;
+    private List<Map<String, Double>> fitnessHistoric;
+    public boolean isRunning;
 
     public ApplicationDisplay(String font, GeneticAlgorithm ag) {
         fontName = font;
         heuristic = ag;
+        fitnessHistoric = new ArrayList<>();
         ag.addGeneticAlgorithmEventListener(new GeneticAlgorithmEventListener() {
             @Override
             public void generationEvolved(GeneticAlgorithmStats statistics) {
-                stats = statistics;
+                updateStats(statistics);
             }
         });
+        isRunning = true;
+        heuristic.updateStats();
     }
 
     public void updateStats(GeneticAlgorithmStats newStats) {
         stats = newStats;
+        Map<String, Double> historicPoint = new HashMap<>();
+        historicPoint.put("min", stats.getSmallestFitness());
+        historicPoint.put("max", stats.getBiggestFitness());
+        historicPoint.put("average", stats.getAverageFitness());
+        fitnessHistoric.add(historicPoint);
     }
 
     public void start() {
@@ -64,6 +81,7 @@ public class ApplicationDisplay {
 
             if (Display.isCloseRequested()) {
                 Display.destroy();
+                isRunning = false;
                 System.exit(0);
             }
         }
@@ -101,8 +119,8 @@ public class ApplicationDisplay {
 
     private void initFont() {
         // load a default java font
-        Font awtFont = new Font(fontName, Font.BOLD, 12);
-        consoleFont = new TrueTypeFont(awtFont, true);
+        consoleFont12 = new TrueTypeFont(new Font(fontName, Font.BOLD, 12), true);
+        consoleFont8 = new TrueTypeFont(new Font(fontName, Font.BOLD, 8), true);
     }
 
     private void render() {
@@ -112,7 +130,7 @@ public class ApplicationDisplay {
     }
 
     private void separateScreen() {
-        glDisable(GL_TEXTURE_2D);
+
         GL11.glColor3f(0.0f, 0.0f, 0.25f);
         GL11.glBegin(GL_QUADS);
         {
@@ -137,14 +155,56 @@ public class ApplicationDisplay {
             GL11.glVertex2f(300f, 300f);
         }
         GL11.glEnd();
-        glEnable(GL_TEXTURE_2D);
+
     }
 
     private void renderObjectiveFunction() {
-        List<Coordinate2D> coordinates = getProportionalPlotCoords();
         glDisable(GL_TEXTURE_2D);
-        GL11.glColor3f(1.0f, 1.0f, 1.0f);
+        renderPlotAxis();
+        plotGraphic();
+        renderPopulationPoints();
+    }
+
+    private void renderPlotAxis() {
         GL11.glLineWidth(1.0f);
+        if (stats.yRangeCrossesXAxis()) {
+            double yAxis = Coordinate2D.getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND,
+                    1 - Coordinate2D.getRatio(stats.getSmallestOFValue(), stats.getBiggestOFValue(), 0));
+            List<Coordinate2D> graduation = getAxisConfiguration(stats.getxAxis(), X_AXIS);
+            GL11.glColor3f(1.0f, 1.0f, 0.0f);
+            GL11.glBegin(GL_LINES);
+            {
+                GL11.glVertex2d(PLOT_LEFT_BOUND - 10, yAxis);
+                GL11.glVertex2d(PLOT_RIGHT_BOUND + 10, yAxis);
+                for (Coordinate2D coordinate : graduation) {
+                    GL11.glVertex2d(coordinate.x, coordinate.y - 2);
+                    GL11.glVertex2d(coordinate.x, coordinate.y + 2);
+                }
+            }
+            GL11.glEnd();
+        }
+        if (stats.xRangeCrossesYAxis()) {
+            double xAxis = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
+                    Coordinate2D.getRatio(stats.getXValues()[0], stats.getXValues()[PLOT_RESOLUTION], 0));
+            List<Coordinate2D> graduation = getAxisConfiguration(stats.getyAxis(), Y_AXIS);
+            GL11.glColor3f(1.0f, 1.0f, 0.0f);
+            GL11.glBegin(GL_LINES);
+            {
+                GL11.glVertex2d(xAxis, PLOT_UP_BOUND - 10);
+                GL11.glVertex2d(xAxis, PLOT_DOWN_BOUND + 10);
+                for (Coordinate2D coordinate : graduation) {
+                    GL11.glVertex2d(coordinate.x - 2, coordinate.y);
+                    GL11.glVertex2d(coordinate.x + 2, coordinate.y);
+                }
+            }
+            GL11.glEnd();
+        }
+    }
+
+    private void plotGraphic() {
+        List<Coordinate2D> coordinates = getProportionalPlotCoords();
+        GL11.glLineWidth(1.0f);
+        GL11.glColor3f(1.0f, 1.0f, 1.0f);
         GL11.glBegin(GL_LINE_STRIP);
         {
             for (Coordinate2D coordinate : coordinates) {
@@ -152,40 +212,90 @@ public class ApplicationDisplay {
             }
         }
         GL11.glEnd();
-        GL11.glEnable(GL_TEXTURE_2D);
-        drawString("test", Color.white, new Coordinate2D(10, 10));
+    }
+
+    private void renderPopulationPoints() {
+        List<Coordinate2D> coordinates = getProportionalPopulationPoints();
+        GL11.glPointSize(5.0f);
+        GL11.glColor3f(1.0f, 0.0f, 0.0f);
+        GL11.glBegin(GL_POINTS);
+        {
+            for (Coordinate2D coordinate : coordinates) {
+                GL11.glVertex2d(coordinate.x, coordinate.y);
+            }
+        }
+        GL11.glEnd();
     }
 
     private void renderGeneticAlgorithmDetails() {
 
     }
 
-    private void drawString(String sentence, Color color, Coordinate2D position) {
+    private void drawString(String sentence, Color color, Coordinate2D position, TrueTypeFont font) {
+        glEnable(GL_TEXTURE_2D);
         Color.white.bind();
-        consoleFont.drawString((float) position.x, (float) position.y, sentence, color);
+        font.drawString((float) position.x, (float) position.y, sentence, color);
+        glDisable(GL_TEXTURE_2D);
     }
 
     private List<Coordinate2D> getProportionalPlotCoords() {
         double[] xValues = stats.getXValues();
         double[] yValues = stats.getYValues();
         double xMin = xValues[0];
-        double xMax = xValues[NUMBER_OF_POINTS - 1];
+        double xMax = xValues[PLOT_RESOLUTION];
         double yMin = stats.getSmallestOFValue();
         double yMax = stats.getBiggestOFValue();
         List<Coordinate2D> coordinates = new ArrayList<>();
-        for (int i = 0; i < NUMBER_OF_POINTS; i++) {
-            double x = getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND, getRatio(xMin, xMax, xValues[i]));
-            double y = getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND, 1 - getRatio(yMin, yMax, yValues[i]));
+        for (int i = 0; i <= PLOT_RESOLUTION; i++) {
+            double x = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
+                    Coordinate2D.getRatio(xMin, xMax, xValues[i]));
+            double y = Coordinate2D.getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND,
+                    1 - Coordinate2D.getRatio(yMin, yMax, yValues[i]));
             coordinates.add(new Coordinate2D(x, y));
         }
         return coordinates;
     }
 
-    private double getRatio(double min, double max, double value) {
-        return (value - min) / (max - min);
+    private List<Coordinate2D> getProportionalPopulationPoints() {
+        float[] population = stats.getPopulation();
+        double[] fitnesses = stats.getFitnesses();
+        double xMin = stats.getXValues()[0];
+        double xMax = stats.getXValues()[PLOT_RESOLUTION];
+        double yMin = stats.getSmallestOFValue();
+        double yMax = stats.getBiggestOFValue();
+        List<Coordinate2D> coordinates = new ArrayList<>();
+        for (int i = 0; i < population.length; i++) {
+            if (population[i] >= stats.getXValues()[0] 
+                    && population[i] <= stats.getXValues()[PLOT_RESOLUTION]) {
+                double x = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
+                        Coordinate2D.getRatio(xMin, xMax, population[i]));
+                double y = Coordinate2D.getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND,
+                        1 - Coordinate2D.getRatio(yMin, yMax, fitnesses[i]));
+                coordinates.add(new Coordinate2D(x, y));
+            }
+        }
+        return coordinates;
     }
 
-    private double getRelativePosition(double min, double max, double ratio) {
-        return (max - min) * ratio + min;
+    private List<Coordinate2D> getAxisConfiguration(double[] axisConfig, char axis) {
+        double min = axisConfig[0];
+        double max = axisConfig[AXIS_DIVISION_AMMOUNT - 1];
+        List<Coordinate2D> coordinates = new ArrayList<>();
+        for (int i = 0; i < AXIS_DIVISION_AMMOUNT; i++) {
+            double x, y;
+            if (axis == X_AXIS) {
+                x = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
+                        Coordinate2D.getRatio(min, max, axisConfig[i]));
+                y = Coordinate2D.getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND,
+                        1 - Coordinate2D.getRatio(stats.getSmallestOFValue(), stats.getBiggestOFValue(), 0));
+            } else {
+                x = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
+                        Coordinate2D.getRatio(stats.getXValues()[0], stats.getXValues()[PLOT_RESOLUTION], 0));
+                y = Coordinate2D.getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND,
+                        1 - Coordinate2D.getRatio(min, max, axisConfig[i]));
+            }
+            coordinates.add(new Coordinate2D(x, y));
+        }
+        return coordinates;
     }
 }

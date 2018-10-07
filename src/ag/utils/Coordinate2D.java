@@ -18,6 +18,14 @@ public class Coordinate2D {
         this.y = y;
     }
     
+    public static double getRatio(double min, double max, double value) {
+        return (value - min) / (max - min);
+    }
+
+    public static double getRelativePosition(double min, double max, double ratio) {
+        return (max - min) * ratio + min;
+    }
+    
     @Override
     public String toString() {
         return "(" + x + ", " + y + ")";
