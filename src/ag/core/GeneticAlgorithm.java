@@ -3,11 +3,10 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ag.ex2;
+package ag.core;
 
 import ag.utils.BinaryGeneticUtils;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -19,12 +18,14 @@ import java.util.Random;
 public class GeneticAlgorithm {
 
     private float[] population;
-    private int numberOfGenes;
-    private int binaryPrecision;
+    private final int numberOfGenes;
+    private final int binaryPrecision;
     private int numberOfCrossoverPoints;
     private float mutationRatio;
     private float crossoverRatio;
     private ObjectiveFunction objectiveFunction;
+    private int range;
+    private int center;
 
     public GeneticAlgorithm(int populationSize, int numberOfGenes, int binaryPrecision,
             int range, int centralElement, int crossoverPoints,
@@ -43,6 +44,8 @@ public class GeneticAlgorithm {
         this.crossoverRatio = crossoverRatio;
         population = BinaryGeneticUtils.getRandomizedFloatPopulation(populationSize, range, centralElement);
         objectiveFunction = new PolynomialFunction(function);
+        this.range = range;
+        this.center = centralElement;
     }
 
     public float[] evolve(int numberOfGenerations) {
@@ -110,11 +113,14 @@ public class GeneticAlgorithm {
         }
         return child;
     }
-    
+
     private int getGeneSource(int index, int[] crossoverPointsArray) {
         for (int i = 0; i < numberOfCrossoverPoints; i++) {
-            if (index >= crossoverPointsArray[i]) continue;
-            else return i;
+            if (index >= crossoverPointsArray[i]) {
+                continue;
+            } else {
+                return i;
+            }
         }
         return numberOfCrossoverPoints;
     }
@@ -139,4 +145,73 @@ public class GeneticAlgorithm {
         return rnd.nextFloat();
     }
 
+    public double[] getStats() {
+        double average = 0;
+        double smallestFitness = objectiveFunction.getFitness(population[0]);
+        double biggestFitness = smallestFitness;
+        for (int i = 0; i < population.length; i++) {
+            double fitness = objectiveFunction.getFitness(population[i]);
+            average += fitness;
+            if (fitness < smallestFitness) {
+                smallestFitness = fitness;
+            } 
+            if (fitness > biggestFitness) {
+                biggestFitness = fitness;
+            }
+        }
+        average /= (double) population.length;
+        double[] stats = new double[3];
+        stats[0] = average;
+        stats[1] = smallestFitness;
+        stats[2] = biggestFitness;
+        return stats;
+    }
+
+    public int getNumberOfCrossoverPoints() {
+        return numberOfCrossoverPoints;
+    }
+
+    public void setNumberOfCrossoverPoints(int numberOfCrossoverPoints) {
+        this.numberOfCrossoverPoints = numberOfCrossoverPoints;
+    }
+
+    public float getMutationRatio() {
+        return mutationRatio;
+    }
+
+    public void setMutationRatio(float mutationRatio) {
+        this.mutationRatio = mutationRatio;
+    }
+
+    public float getCrossoverRatio() {
+        return crossoverRatio;
+    }
+
+    public void setCrossoverRatio(float crossoverRatio) {
+        this.crossoverRatio = crossoverRatio;
+    }
+
+    public ObjectiveFunction getObjectiveFunction() {
+        return objectiveFunction;
+    }
+
+    public void setObjectiveFunction(String function) {
+        this.objectiveFunction = new PolynomialFunction(function);
+    }
+
+    public int getRange() {
+        return range;
+    }
+
+    public void setRange(int range) {
+        this.range = range;
+    }
+
+    public int getCenter() {
+        return center;
+    }
+
+    public void setCenter(int center) {
+        this.center = center;
+    }
 }

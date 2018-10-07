@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ag.ex2;
+package ag.core;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;

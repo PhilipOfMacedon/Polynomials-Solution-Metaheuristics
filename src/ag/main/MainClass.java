@@ -5,7 +5,8 @@
  */
 package ag.main;
 
-import ag.ex2.GeneticAlgorithm;
+import ag.core.GeneticAlgorithm;
+import ag.gui.ApplicationDisplay;
 
 /**
  *
@@ -22,6 +23,8 @@ public class MainClass {
         for (int i = 0; i < population.length; i++) {
             System.out.println(population[i]);
         }
+        ApplicationDisplay appDisplay = new ApplicationDisplay("Courier New", ag);
+        appDisplay.start();
     }
 
 }
