@@ -10,10 +10,10 @@ package ag.utils;
  * @author filipe
  */
 public class Coordinate2D {
-    public int x;
-    public int y;
+    public double x;
+    public double y;
     
-    public Coordinate2D(int x, int y) {
+    public Coordinate2D(double x, double y) {
         this.x = x;
         this.y = y;
     }
@@ -40,8 +40,8 @@ public class Coordinate2D {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + this.x;
-        hash = 97 * hash + this.y;
+        hash = 89 * hash + (int) (Double.doubleToLongBits(this.x) ^ (Double.doubleToLongBits(this.x) >>> 32));
+        hash = 89 * hash + (int) (Double.doubleToLongBits(this.y) ^ (Double.doubleToLongBits(this.y) >>> 32));
         return hash;
     }
 }

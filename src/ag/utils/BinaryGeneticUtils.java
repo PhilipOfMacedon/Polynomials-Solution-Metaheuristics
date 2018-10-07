@@ -119,7 +119,7 @@ public class BinaryGeneticUtils {
         }
     }
 
-    public static float[] getRandomizedFloatPopulation(int populationSize, int range, int centralElement) {
+    public static float[] getRandomizedFloatPopulation(int populationSize, float range, float centralElement) {
         if (populationSize <= 0) {
             throw new IllegalArgumentException("The population must be grater than zero");
         } else if (range <= 1) {

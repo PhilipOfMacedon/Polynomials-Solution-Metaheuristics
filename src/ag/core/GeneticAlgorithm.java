@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import static ag.core.GeneticAlgorithmStats.NUMBER_OF_POINTS;
 
 /**
  *
@@ -24,11 +25,15 @@ public class GeneticAlgorithm {
     private float mutationRatio;
     private float crossoverRatio;
     private ObjectiveFunction objectiveFunction;
-    private int range;
-    private int center;
+    private float range;
+    private float center;
+    private double smallestOFValue;
+    private double biggestOFValue;
+    private boolean changedObjectiveFunction;
+    private List<GeneticAlgorithmEventListener> listeners;
 
     public GeneticAlgorithm(int populationSize, int numberOfGenes, int binaryPrecision,
-            int range, int centralElement, int crossoverPoints,
+            float range, float centralElement, int crossoverPoints,
             float mutationRatio, float crossoverRatio, String function) {
         if (populationSize % 2 == 1) {
             throw new IllegalArgumentException("The population size must be even.");
@@ -46,13 +51,46 @@ public class GeneticAlgorithm {
         objectiveFunction = new PolynomialFunction(function);
         this.range = range;
         this.center = centralElement;
+        changedObjectiveFunction = true;
+        listeners = new ArrayList<>();
     }
 
-    public float[] evolve(int numberOfGenerations) {
+    private void fireEvent(GeneticAlgorithmStats stats) {
+        for (GeneticAlgorithmEventListener listener : listeners) {
+            listener.generationEvolved(stats);
+        }
+    }
+    
+    public void addGeneticAlgorithmEventListener(GeneticAlgorithmEventListener listener) {
+        listeners.add(listener);
+    }
+    
+    private double[] loadXValues() {
+        double[] xValues = new double[NUMBER_OF_POINTS];
+        for (int i = 0; i < NUMBER_OF_POINTS; i++) {
+            xValues[i] = (range * (double) i / (double) NUMBER_OF_POINTS) - range / 2d + center;
+        }
+        return xValues;
+    }
+
+    private double[] loadYValues(double[] xValues) {
+        double[] yValues = new double[NUMBER_OF_POINTS];
+        for (int i = 0; i < NUMBER_OF_POINTS; i++) {
+            yValues[i] = objectiveFunction.getFitness(xValues[i]);
+        }
+        return yValues;
+    }
+
+    public void evolve(int numberOfGenerations) {
         for (int i = 0; i < numberOfGenerations; i++) {
             breed();
         }
-        return population;
+        updateStats();
+    }
+    
+    public void evolveOneStep() {
+        breed();
+        updateStats();
     }
 
     private void breed() {
@@ -145,7 +183,7 @@ public class GeneticAlgorithm {
         return rnd.nextFloat();
     }
 
-    public double[] getStats() {
+    private void updateStats() {
         double average = 0;
         double smallestFitness = objectiveFunction.getFitness(population[0]);
         double biggestFitness = smallestFitness;
@@ -154,17 +192,36 @@ public class GeneticAlgorithm {
             average += fitness;
             if (fitness < smallestFitness) {
                 smallestFitness = fitness;
-            } 
+            }
             if (fitness > biggestFitness) {
                 biggestFitness = fitness;
             }
         }
         average /= (double) population.length;
-        double[] stats = new double[3];
-        stats[0] = average;
-        stats[1] = smallestFitness;
-        stats[2] = biggestFitness;
-        return stats;
+        double[] xValues = loadXValues();
+        double[] yValues = loadYValues(xValues);
+        updateObjectiveFunctionPrecalculatedValues(yValues);
+        GeneticAlgorithmStats stats = new GeneticAlgorithmStats(range, center, smallestOFValue, 
+                biggestOFValue, smallestFitness, biggestFitness, average, xValues, yValues);
+        fireEvent(stats);
+    }
+    
+    private void updateObjectiveFunctionPrecalculatedValues(double[] yValues) {
+        if (changedObjectiveFunction) {
+            double smallest = yValues[0];
+            double biggest = smallest;
+            for (int i = 0; i < NUMBER_OF_POINTS; i++) {
+                if (yValues[i] < smallest) {
+                    smallest = yValues[i];
+                }
+                if (yValues[i] > biggest) {
+                    biggest = yValues[i];
+                }
+            }
+            smallestOFValue = smallest;
+            biggestOFValue = biggest;
+            changedObjectiveFunction = false;
+        }
     }
 
     public int getNumberOfCrossoverPoints() {
@@ -199,19 +256,11 @@ public class GeneticAlgorithm {
         this.objectiveFunction = new PolynomialFunction(function);
     }
 
-    public int getRange() {
-        return range;
-    }
-
-    public void setRange(int range) {
+    public void setRange(float range) {
         this.range = range;
     }
 
-    public int getCenter() {
-        return center;
-    }
-
-    public void setCenter(int center) {
+    public void setCenter(float center) {
         this.center = center;
     }
 }

@@ -6,9 +6,12 @@
 package ag.gui;
 
 import ag.core.GeneticAlgorithm;
-import ag.core.ObjectiveFunction;
+import ag.core.GeneticAlgorithmEventListener;
+import ag.core.GeneticAlgorithmStats;
 import ag.utils.Coordinate2D;
 import java.awt.Font;
+import java.util.ArrayList;
+import java.util.List;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
@@ -16,6 +19,7 @@ import org.lwjgl.opengl.GL11;
 import static org.lwjgl.opengl.GL11.*;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.TrueTypeFont;
+import static ag.core.GeneticAlgorithmStats.NUMBER_OF_POINTS;
 
 /**
  *
@@ -23,13 +27,28 @@ import org.newdawn.slick.TrueTypeFont;
  */
 public class ApplicationDisplay {
 
+    private static final double PLOT_LEFT_BOUND = 320D;
+    private static final double PLOT_RIGHT_BOUND = 780D;
+    private static final double PLOT_UP_BOUND = 20D;
+    private static final double PLOT_DOWN_BOUND = 280D;
     private TrueTypeFont consoleFont;
     private String fontName;
+    private GeneticAlgorithmStats stats;
     private GeneticAlgorithm heuristic;
 
     public ApplicationDisplay(String font, GeneticAlgorithm ag) {
         fontName = font;
         heuristic = ag;
+        ag.addGeneticAlgorithmEventListener(new GeneticAlgorithmEventListener() {
+            @Override
+            public void generationEvolved(GeneticAlgorithmStats statistics) {
+                stats = statistics;
+            }
+        });
+    }
+
+    public void updateStats(GeneticAlgorithmStats newStats) {
+        stats = newStats;
     }
 
     public void start() {
@@ -122,7 +141,18 @@ public class ApplicationDisplay {
     }
 
     private void renderObjectiveFunction() {
-        ObjectiveFunction function = heuristic.getObjectiveFunction();
+        List<Coordinate2D> coordinates = getProportionalPlotCoords();
+        glDisable(GL_TEXTURE_2D);
+        GL11.glColor3f(1.0f, 1.0f, 1.0f);
+        GL11.glLineWidth(1.0f);
+        GL11.glBegin(GL_LINE_STRIP);
+        {
+            for (Coordinate2D coordinate : coordinates) {
+                GL11.glVertex2d(coordinate.x, coordinate.y);
+            }
+        }
+        GL11.glEnd();
+        GL11.glEnable(GL_TEXTURE_2D);
         drawString("test", Color.white, new Coordinate2D(10, 10));
     }
 
@@ -132,6 +162,30 @@ public class ApplicationDisplay {
 
     private void drawString(String sentence, Color color, Coordinate2D position) {
         Color.white.bind();
-        consoleFont.drawString(position.x, position.y, sentence, color);
+        consoleFont.drawString((float) position.x, (float) position.y, sentence, color);
+    }
+
+    private List<Coordinate2D> getProportionalPlotCoords() {
+        double[] xValues = stats.getXValues();
+        double[] yValues = stats.getYValues();
+        double xMin = xValues[0];
+        double xMax = xValues[NUMBER_OF_POINTS - 1];
+        double yMin = stats.getSmallestOFValue();
+        double yMax = stats.getBiggestOFValue();
+        List<Coordinate2D> coordinates = new ArrayList<>();
+        for (int i = 0; i < NUMBER_OF_POINTS; i++) {
+            double x = getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND, getRatio(xMin, xMax, xValues[i]));
+            double y = getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND, 1 - getRatio(yMin, yMax, yValues[i]));
+            coordinates.add(new Coordinate2D(x, y));
+        }
+        return coordinates;
+    }
+
+    private double getRatio(double min, double max, double value) {
+        return (value - min) / (max - min);
+    }
+
+    private double getRelativePosition(double min, double max, double ratio) {
+        return (max - min) * ratio + min;
     }
 }
