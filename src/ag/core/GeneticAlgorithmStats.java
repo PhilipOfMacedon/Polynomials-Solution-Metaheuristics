@@ -11,7 +11,7 @@ package ag.core;
  */
 public class GeneticAlgorithmStats {
 
-    public static final int PLOT_RESOLUTION = 30;
+    public static final int PLOT_RESOLUTION = 50;
     public static final int AXIS_DIVISION_AMMOUNT = 13;
     private final ObjectiveFunction function;
     private final float range;

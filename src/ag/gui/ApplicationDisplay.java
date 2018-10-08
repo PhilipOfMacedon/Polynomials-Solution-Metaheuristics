@@ -34,6 +34,7 @@ public class ApplicationDisplay {
     private static final double PLOT_RIGHT_BOUND = 780D;
     private static final double PLOT_UP_BOUND = 20D;
     private static final double PLOT_DOWN_BOUND = 280D;
+    private static final Coordinate2D HUD_BOUND_POSITION = new Coordinate2D(20D, 320D);
     private static final char X_AXIS = 'x';
     private static final char Y_AXIS = 'y';
     private static final DecimalFormat decimal = new DecimalFormat(".##");

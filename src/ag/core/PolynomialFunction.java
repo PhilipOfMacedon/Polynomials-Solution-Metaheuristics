@@ -63,10 +63,25 @@ public final class PolynomialFunction extends ObjectiveFunction {
                 formattedEquation += " " + term.toString();
             }
             if (formattedEquation.charAt(0) == '+') {
-                return formattedEquation.substring(2);
+                formattedEquation = formattedEquation.substring(2);
             }
         }
-        return formattedEquation;
+        return formattedEquation + " = 0";
+    }
+    
+    @Override
+    public String getUnicodeEquation() {
+        String formattedEquation = "";
+        if (!terms.isEmpty()) {
+            formattedEquation = terms.get(0).toUnicodeString();
+            for (PolynomialTerm term : terms.subList(1, terms.size())) {
+                formattedEquation += " " + term.toUnicodeString();
+            }
+            if (formattedEquation.charAt(0) == '+') {
+                formattedEquation = formattedEquation.substring(2);
+            }
+        }
+        return formattedEquation + " = 0";
     }
 
     private double getCoefficient(String term) {

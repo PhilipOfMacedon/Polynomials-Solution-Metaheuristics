@@ -22,5 +22,7 @@ public abstract class ObjectiveFunction {
     public abstract double getFitness(double x);
 
     public abstract String getFormattedEquation();
+    
+    public abstract String getUnicodeEquation();
 
 }

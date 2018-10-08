@@ -52,6 +52,51 @@ public class PolynomialTerm implements Comparable<PolynomialTerm> {
         }
         return returnStatement;
     }
+    
+    public String toUnicodeString() {
+        DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.US);
+        DecimalFormat df = new DecimalFormat("#.##########", otherSymbols);
+        String returnStatement = "";
+        if (exponent == 0 || coefficient != 1) {
+            String formattedCoefficient = df.format(coefficient);
+            if (formattedCoefficient.charAt(0) == '-') {
+                returnStatement += "- " + formattedCoefficient.substring(1);
+            } else {
+                returnStatement += "+ " + formattedCoefficient;
+            }
+        } else if (coefficient == -1) {
+            returnStatement += "- ";
+        } else {
+            returnStatement += "+ ";
+        }
+        if (exponent > 0) {
+            returnStatement += "x";
+        }
+        if (exponent > 1) {
+            String expString = exponent + "";
+            String formattedExp = "";
+            for (int i = 0; i < expString.length(); i++) {
+                String hexString;
+                switch (expString.charAt(i)) {
+                    case '1':
+                        hexString = "B9";
+                        break;
+                    case '2':
+                    case '3':
+                        hexString = "B" + expString.charAt(i);
+                        break;
+                    default:
+                        hexString = "207" + expString.charAt(i);
+                        break;
+                }
+                int charCode = Integer.parseInt(hexString, 16);
+                char[] charArray = Character.toChars(charCode);
+                formattedExp += new String(charArray);
+            }
+            returnStatement += formattedExp;
+        }
+        return returnStatement;
+    }
 
     @Override
     public int hashCode() {
