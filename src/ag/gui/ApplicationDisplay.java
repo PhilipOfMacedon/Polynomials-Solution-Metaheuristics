@@ -37,13 +37,15 @@ public class ApplicationDisplay {
     private static final Coordinate2D HUD_BOUND_POSITION = new Coordinate2D(20D, 320D);
     private static final char X_AXIS = 'x';
     private static final char Y_AXIS = 'y';
-    private static final DecimalFormat decimal = new DecimalFormat(".##");
+    private static final DecimalFormat decimal = new DecimalFormat("#.##");
     private TrueTypeFont consoleFont12;
     private TrueTypeFont consoleFont8;
     private String fontName;
     private GeneticAlgorithmStats stats;
     private GeneticAlgorithm heuristic;
     private List<Map<String, Double>> fitnessHistoric;
+    private double historicalMin = Double.MAX_VALUE;
+    private double historicalMax = Double.MIN_VALUE;
     public boolean isRunning;
 
     public ApplicationDisplay(String font, GeneticAlgorithm ag) {
@@ -67,6 +69,7 @@ public class ApplicationDisplay {
         historicPoint.put("max", stats.getBiggestFitness());
         historicPoint.put("average", stats.getAverageFitness());
         fitnessHistoric.add(historicPoint);
+        System.out.println("DONE!");
     }
 
     public void start() {
@@ -93,6 +96,7 @@ public class ApplicationDisplay {
             Display.setDisplayMode(new DisplayMode(width, height));
             Display.create();
             Display.setVSyncEnabled(true);
+            Display.setTitle("Polynomial Genetic Machine V1.0");
         } catch (LWJGLException e) {
             e.printStackTrace();
             System.exit(0);
@@ -126,37 +130,44 @@ public class ApplicationDisplay {
 
     private void render() {
         separateScreen();
-        renderObjectiveFunction();
-        renderGeneticAlgorithmDetails();
+        renderHUD();
+        renderInterface();
     }
 
     private void separateScreen() {
-
-        GL11.glColor3f(0.0f, 0.0f, 0.25f);
+        drawQuad(new Coordinate2D(300, 0), new Coordinate2D(800, 300), new Color(0f, 0f, 0.25f));
+        List<Coordinate2D> divisionCoords = new ArrayList<>();
+        divisionCoords.add(new Coordinate2D(300d, 300d));
+        divisionCoords.add(new Coordinate2D(800d, 300d));
+        divisionCoords.add(new Coordinate2D(300d, 0d));
+        divisionCoords.add(new Coordinate2D(300d, 300d));
+        divisionCoords.add(new Coordinate2D(0d, 300d));
+        divisionCoords.add(new Coordinate2D(300d, 300d));
+        drawLines(divisionCoords, 3f, Color.white);
+    }
+    
+    private void drawQuad(Coordinate2D upperLeft, Coordinate2D lowerRight, Color background) {
+        GL11.glColor3f(background.r, background.g, background.b);
         GL11.glBegin(GL_QUADS);
         {
-            GL11.glVertex2f(300f, 0f);
-            GL11.glVertex2f(300f, 300f);
-            GL11.glVertex2f(800f, 300f);
-            GL11.glVertex2f(800f, 0f);
+            GL11.glVertex2d(upperLeft.x, upperLeft.y);
+            GL11.glVertex2d(upperLeft.x, lowerRight.y);
+            GL11.glVertex2d(lowerRight.x, lowerRight.y);
+            GL11.glVertex2d(lowerRight.x, upperLeft.y);
         }
         GL11.glEnd();
-        GL11.glColor3f(1.0f, 1.0f, 1.0f);
-        GL11.glLineWidth(3f);
+    }
+    
+    private void drawLines(List<Coordinate2D> lineCoords, float lineWidth, Color color) {
+        GL11.glColor3f(color.r, color.g, color.b);
+        GL11.glLineWidth(lineWidth);
         GL11.glBegin(GL_LINES);
         {
-            //
-            GL11.glVertex2f(300f, 300f);
-            GL11.glVertex2f(800f, 300f);
-            //
-            GL11.glVertex2f(300f, 0f);
-            GL11.glVertex2f(300f, 300f);
-            //
-            GL11.glVertex2f(0f, 300f);
-            GL11.glVertex2f(300f, 300f);
+            for (Coordinate2D coord : lineCoords) {
+                GL11.glVertex2d(coord.x, coord.y);
+            }
         }
         GL11.glEnd();
-
     }
 
     private void renderObjectiveFunction() {
@@ -228,8 +239,9 @@ public class ApplicationDisplay {
         GL11.glEnd();
     }
 
-    private void renderGeneticAlgorithmDetails() {
-
+    private void renderHUD() {
+        renderObjectiveFunction();
+        renderGeneticAlgorithmDetails();
     }
 
     private void drawString(String sentence, Color color, Coordinate2D position, TrueTypeFont font) {
@@ -266,7 +278,7 @@ public class ApplicationDisplay {
         double yMax = stats.getBiggestOFValue();
         List<Coordinate2D> coordinates = new ArrayList<>();
         for (int i = 0; i < population.length; i++) {
-            if (population[i] >= stats.getXValues()[0] 
+            if (population[i] >= stats.getXValues()[0]
                     && population[i] <= stats.getXValues()[PLOT_RESOLUTION]) {
                 double x = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
                         Coordinate2D.getRatio(xMin, xMax, population[i]));
@@ -298,5 +310,23 @@ public class ApplicationDisplay {
             coordinates.add(new Coordinate2D(x, y));
         }
         return coordinates;
+    }
+
+    private void renderGeneticAlgorithmDetails() {
+        Coordinate2D positioning = new Coordinate2D(HUD_BOUND_POSITION.x, HUD_BOUND_POSITION.y);
+        drawString("OBJECTIVE FUNCTION: " + heuristic.getObjectiveFunction().getFormattedEquation(),
+                Color.white, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("MIN x: " + decimal.format(stats.getXValues()[0]), Color.white, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("MAX x: " + decimal.format(stats.getXValues()[PLOT_RESOLUTION]), Color.white, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("POPULATION: " + stats.getPopulation().length, Color.white, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("GENERATION: " + stats.getGeneration(), Color.white, positioning, consoleFont12);
+    }
+
+    private void renderInterface() {
+
     }
 }

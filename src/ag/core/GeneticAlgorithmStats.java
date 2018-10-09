@@ -13,6 +13,7 @@ public class GeneticAlgorithmStats {
 
     public static final int PLOT_RESOLUTION = 50;
     public static final int AXIS_DIVISION_AMMOUNT = 13;
+    private final int generation;
     private final ObjectiveFunction function;
     private final float range;
     private final float center;
@@ -30,7 +31,8 @@ public class GeneticAlgorithmStats {
 
     public GeneticAlgorithmStats(ObjectiveFunction function, float range, float center, double smallestOFValue,
             double biggestOFValue, double smallestFitness, double biggestFitness,
-            double averageFitness, float[] population, double[] xValues, double[] yValues) {
+            double averageFitness, float[] population, double[] xValues, double[] yValues, int generation) {
+        this.generation = generation;
         this.function = function;
         this.range = range;
         this.center = center;
@@ -60,6 +62,10 @@ public class GeneticAlgorithmStats {
         for (int i = 0; i < population.length; i++) {
             fitnesses[i] = function.getFitness(population[i]);
         }
+    }
+
+    public int getGeneration() {
+        return generation;
     }
     
     public float getRange() {

@@ -32,6 +32,7 @@ public class GeneticAlgorithm {
     private double biggestOFValue;
     private boolean changedObjectiveFunction;
     private List<GeneticAlgorithmEventListener> listeners;
+    private int generation;
 
     public GeneticAlgorithm(int populationSize, int numberOfGenes, int binaryPrecision,
             float range, float centralElement, int crossoverPoints,
@@ -55,6 +56,7 @@ public class GeneticAlgorithm {
         this.applyBoundaryCap = applyBoundaryCap;
         changedObjectiveFunction = true;
         listeners = new ArrayList<>();
+        generation = 0;
         updateStats();
     }
 
@@ -88,11 +90,13 @@ public class GeneticAlgorithm {
         for (int i = 0; i < numberOfGenerations; i++) {
             breed();
         }
+        generation += numberOfGenerations;
         updateStats();
     }
 
     public void evolveOneStep() {
         breed();
+        generation++;
         updateStats();
     }
 
@@ -221,7 +225,7 @@ public class GeneticAlgorithm {
         double[] yValues = loadYValues(xValues);
         updateObjectiveFunctionPrecalculatedValues(yValues);
         GeneticAlgorithmStats stats = new GeneticAlgorithmStats(objectiveFunction, range, center, smallestOFValue,
-                biggestOFValue, smallestFitness, biggestFitness, average, population, xValues, yValues);
+                biggestOFValue, smallestFitness, biggestFitness, average, population, xValues, yValues, generation);
         fireEvent(stats);
     }
 
