@@ -18,11 +18,16 @@ import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import static org.lwjgl.opengl.GL11.*;
 import org.newdawn.slick.Color;
-import org.newdawn.slick.TrueTypeFont;
+import org.newdawn.slick.UnicodeFont;
 import static ag.core.GeneticAlgorithmStats.*;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.lwjgl.input.Mouse;
+import org.newdawn.slick.SlickException;
+import org.newdawn.slick.font.effects.ColorEffect;
 
 /**
  *
@@ -35,11 +40,13 @@ public class ApplicationDisplay {
     private static final double PLOT_UP_BOUND = 20D;
     private static final double PLOT_DOWN_BOUND = 280D;
     private static final Coordinate2D HUD_BOUND_POSITION = new Coordinate2D(20D, 320D);
+    private static final List<Coordinate2D> DIVISION_LINES = loadDivisionCoords();
+    private static final List<Coordinate2D>[] HISTORIC_CHART_DIVISIONS = loadChartLineDivisions();
     private static final char X_AXIS = 'x';
     private static final char Y_AXIS = 'y';
     private static final DecimalFormat decimal = new DecimalFormat("#.##");
-    private TrueTypeFont consoleFont12;
-    private TrueTypeFont consoleFont8;
+    private UnicodeFont consoleFont12;
+    private UnicodeFont consoleFont8;
     private String fontName;
     private GeneticAlgorithmStats stats;
     private GeneticAlgorithm heuristic;
@@ -47,6 +54,44 @@ public class ApplicationDisplay {
     private double historicalMin = Double.MAX_VALUE;
     private double historicalMax = Double.MIN_VALUE;
     public boolean isRunning;
+
+    private static List<Coordinate2D> loadDivisionCoords() {
+        List<Coordinate2D> divisionCoords = new ArrayList<>();
+        divisionCoords.add(new Coordinate2D(300d, 300d));
+        divisionCoords.add(new Coordinate2D(800d, 300d));
+        divisionCoords.add(new Coordinate2D(300d, 0d));
+        divisionCoords.add(new Coordinate2D(300d, 300d));
+        divisionCoords.add(new Coordinate2D(0d, 300d));
+        divisionCoords.add(new Coordinate2D(300d, 300d));
+        return divisionCoords;
+    }
+    
+    private static List<Coordinate2D>[] loadChartLineDivisions() {
+        List<Coordinate2D>[] markings;
+        markings = new List[2];
+        List<Coordinate2D> divisionCoords = new ArrayList<>();
+        int minX = 180;
+        int maxX = 780;
+        int minY = 360;
+        int maxY = 580;
+        int divisions = 22;
+        for (int i = 1; i < divisions; i++) {
+            divisionCoords.add(new Coordinate2D(minX + i * (maxX-minX)/divisions, maxY));
+            divisionCoords.add(new Coordinate2D(minX + i * (maxX-minX)/divisions, minY));
+        }
+        List<Coordinate2D> limits = new ArrayList<>();
+        limits.add(new Coordinate2D(minX, minY));
+        limits.add(new Coordinate2D(maxX, minY));
+        limits.add(new Coordinate2D(minX, maxY));
+        limits.add(new Coordinate2D(maxX, maxY));
+        limits.add(new Coordinate2D(minX, minY));
+        limits.add(new Coordinate2D(minX, maxY));
+        limits.add(new Coordinate2D(maxX, minY));
+        limits.add(new Coordinate2D(maxX, maxY));
+        markings[0] = divisionCoords;
+        markings[1] = limits;
+        return markings;
+    }
 
     public ApplicationDisplay(String font, GeneticAlgorithm ag) {
         fontName = font;
@@ -64,10 +109,17 @@ public class ApplicationDisplay {
 
     public void updateStats(GeneticAlgorithmStats newStats) {
         stats = newStats;
+        if (stats.getSmallestFitness() < historicalMin) {
+            historicalMin = stats.getSmallestFitness();
+        }
+        if (stats.getBiggestFitness() > historicalMax) {
+            historicalMax = stats.getBiggestFitness();
+        }
         Map<String, Double> historicPoint = new HashMap<>();
         historicPoint.put("min", stats.getSmallestFitness());
         historicPoint.put("max", stats.getBiggestFitness());
         historicPoint.put("average", stats.getAverageFitness());
+        if (fitnessHistoric.size() == 20) fitnessHistoric.remove(0);
         fitnessHistoric.add(historicPoint);
         System.out.println("DONE!");
     }
@@ -77,9 +129,9 @@ public class ApplicationDisplay {
         initFont();
 
         while (true) {
-            GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT);
             render();
-
+            pollInput();
             Display.update();
             Display.sync(100);
 
@@ -102,30 +154,40 @@ public class ApplicationDisplay {
             System.exit(0);
         }
 
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glShadeModel(GL11.GL_SMOOTH);
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glDisable(GL11.GL_LIGHTING);
+        glEnable(GL_TEXTURE_2D);
+        glShadeModel(GL_SMOOTH);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_LIGHTING);
 
-        GL11.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        GL11.glClearDepth(1);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClearDepth(1);
 
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        GL11.glViewport(0, 0, width, height);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        glViewport(0, 0, width, height);
+        glMatrixMode(GL_MODELVIEW);
 
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glLoadIdentity();
-        GL11.glOrtho(0, width, height, 0, 1, -1);
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, width, height, 0, 1, -1);
+        glMatrixMode(GL_MODELVIEW);
     }
 
     private void initFont() {
-        // load a default java font
-        consoleFont12 = new TrueTypeFont(new Font(fontName, Font.BOLD, 12), true);
-        consoleFont8 = new TrueTypeFont(new Font(fontName, Font.BOLD, 8), true);
+        try {
+            // load a default java font
+            consoleFont12 = new UnicodeFont(new Font(fontName, Font.BOLD, 12));
+            consoleFont12.getEffects().add(new ColorEffect(java.awt.Color.white));
+            consoleFont12.addAsciiGlyphs();
+            consoleFont12.loadGlyphs(); // load glyphs from font file
+            consoleFont8 = new UnicodeFont(new Font(fontName, Font.BOLD, 8));
+            consoleFont8.getEffects().add(new ColorEffect(java.awt.Color.white));
+            consoleFont8.addAsciiGlyphs();
+            consoleFont8.loadGlyphs(); // load glyphs from font file
+        } catch (SlickException ex) {
+            ex.printStackTrace();
+        }
     }
 
     private void render() {
@@ -134,40 +196,64 @@ public class ApplicationDisplay {
         renderInterface();
     }
 
-    private void separateScreen() {
-        drawQuad(new Coordinate2D(300, 0), new Coordinate2D(800, 300), new Color(0f, 0f, 0.25f));
-        List<Coordinate2D> divisionCoords = new ArrayList<>();
-        divisionCoords.add(new Coordinate2D(300d, 300d));
-        divisionCoords.add(new Coordinate2D(800d, 300d));
-        divisionCoords.add(new Coordinate2D(300d, 0d));
-        divisionCoords.add(new Coordinate2D(300d, 300d));
-        divisionCoords.add(new Coordinate2D(0d, 300d));
-        divisionCoords.add(new Coordinate2D(300d, 300d));
-        drawLines(divisionCoords, 3f, Color.white);
-    }
-    
-    private void drawQuad(Coordinate2D upperLeft, Coordinate2D lowerRight, Color background) {
-        GL11.glColor3f(background.r, background.g, background.b);
-        GL11.glBegin(GL_QUADS);
-        {
-            GL11.glVertex2d(upperLeft.x, upperLeft.y);
-            GL11.glVertex2d(upperLeft.x, lowerRight.y);
-            GL11.glVertex2d(lowerRight.x, lowerRight.y);
-            GL11.glVertex2d(lowerRight.x, upperLeft.y);
-        }
-        GL11.glEnd();
-    }
-    
-    private void drawLines(List<Coordinate2D> lineCoords, float lineWidth, Color color) {
-        GL11.glColor3f(color.r, color.g, color.b);
-        GL11.glLineWidth(lineWidth);
-        GL11.glBegin(GL_LINES);
-        {
-            for (Coordinate2D coord : lineCoords) {
-                GL11.glVertex2d(coord.x, coord.y);
+    private void pollInput() {
+        while (Mouse.next()) {
+            if (Mouse.getEventButtonState()) {
+                if (Mouse.getEventButton() == 0) {
+                    //Left button pressed
+                } else if (Mouse.getEventButton() == 1) {
+                    //Right button pressed
+                } else if (Mouse.getEventButton() == 2) {
+                    showPositionAtConsole();
+                }
+            } else if (Mouse.getEventButton() == 0) {
+                System.out.println("Left button released");
             }
         }
-        GL11.glEnd();
+    }
+
+    private void showPositionAtConsole() {
+        int x = Mouse.getX();
+        int y = Mouse.getY();
+        System.err.println("Mouse @ X:" + x + " Y:" + (800 - y));
+    }
+
+    private void separateScreen() {
+        drawQuad(new Coordinate2D(300, 0), new Coordinate2D(800, 300), new Color(0f, 0f, 0.25f));
+        //drawQuad(new Coordinate2D(180d, 360d), new Coordinate2D(780d, 580d), new Color(0f, 0f, 0.25f));
+        drawLines(DIVISION_LINES, 3f, Color.white, false);
+    }
+
+    private void drawQuad(Coordinate2D upperLeft, Coordinate2D lowerRight, Color background) {
+        glColor3f(background.r, background.g, background.b);
+        glBegin(GL_QUADS);
+        {
+            glVertex2d(upperLeft.x, upperLeft.y);
+            glVertex2d(upperLeft.x, lowerRight.y);
+            glVertex2d(lowerRight.x, lowerRight.y);
+            glVertex2d(lowerRight.x, upperLeft.y);
+        }
+        glEnd();
+    }
+
+    private void drawLines(List<Coordinate2D> lineCoords, float lineWidth, Color color, boolean dotted) {
+        if (dotted) {
+            glPushAttrib(GL_ENABLE_BIT);
+            glLineStipple(1, (short)0x0001);
+            glEnable(GL_LINE_STIPPLE);
+        }
+        glColor3f(color.r, color.g, color.b);
+        glLineWidth(lineWidth);
+        glBegin(GL_LINES);
+        {
+            for (Coordinate2D coord : lineCoords) {
+                glVertex2d(coord.x, coord.y);
+            }
+        }
+        glEnd();
+        if (dotted) {
+            glPopAttrib();
+        }
     }
 
     private void renderObjectiveFunction() {
@@ -178,65 +264,65 @@ public class ApplicationDisplay {
     }
 
     private void renderPlotAxis() {
-        GL11.glLineWidth(1.0f);
+        glLineWidth(1.0f);
         if (stats.yRangeCrossesXAxis()) {
             double yAxis = Coordinate2D.getRelativePosition(PLOT_UP_BOUND, PLOT_DOWN_BOUND,
                     1 - Coordinate2D.getRatio(stats.getSmallestOFValue(), stats.getBiggestOFValue(), 0));
             List<Coordinate2D> graduation = getAxisConfiguration(stats.getxAxis(), X_AXIS);
-            GL11.glColor3f(1.0f, 1.0f, 0.0f);
-            GL11.glBegin(GL_LINES);
+            glColor3f(1.0f, 1.0f, 0.0f);
+            glBegin(GL_LINES);
             {
-                GL11.glVertex2d(PLOT_LEFT_BOUND - 10, yAxis);
-                GL11.glVertex2d(PLOT_RIGHT_BOUND + 10, yAxis);
+                glVertex2d(PLOT_LEFT_BOUND - 10, yAxis);
+                glVertex2d(PLOT_RIGHT_BOUND + 10, yAxis);
                 for (Coordinate2D coordinate : graduation) {
-                    GL11.glVertex2d(coordinate.x, coordinate.y - 2);
-                    GL11.glVertex2d(coordinate.x, coordinate.y + 2);
+                    glVertex2d(coordinate.x, coordinate.y - 2);
+                    glVertex2d(coordinate.x, coordinate.y + 2);
                 }
             }
-            GL11.glEnd();
+            glEnd();
         }
         if (stats.xRangeCrossesYAxis()) {
             double xAxis = Coordinate2D.getRelativePosition(PLOT_LEFT_BOUND, PLOT_RIGHT_BOUND,
                     Coordinate2D.getRatio(stats.getXValues()[0], stats.getXValues()[PLOT_RESOLUTION], 0));
             List<Coordinate2D> graduation = getAxisConfiguration(stats.getyAxis(), Y_AXIS);
-            GL11.glColor3f(1.0f, 1.0f, 0.0f);
-            GL11.glBegin(GL_LINES);
+            glColor3f(1.0f, 1.0f, 0.0f);
+            glBegin(GL_LINES);
             {
-                GL11.glVertex2d(xAxis, PLOT_UP_BOUND - 10);
-                GL11.glVertex2d(xAxis, PLOT_DOWN_BOUND + 10);
+                glVertex2d(xAxis, PLOT_UP_BOUND - 10);
+                glVertex2d(xAxis, PLOT_DOWN_BOUND + 10);
                 for (Coordinate2D coordinate : graduation) {
-                    GL11.glVertex2d(coordinate.x - 2, coordinate.y);
-                    GL11.glVertex2d(coordinate.x + 2, coordinate.y);
+                    glVertex2d(coordinate.x - 2, coordinate.y);
+                    glVertex2d(coordinate.x + 2, coordinate.y);
                 }
             }
-            GL11.glEnd();
+            glEnd();
         }
     }
 
     private void plotGraphic() {
         List<Coordinate2D> coordinates = getProportionalPlotCoords();
-        GL11.glLineWidth(1.0f);
-        GL11.glColor3f(1.0f, 1.0f, 1.0f);
-        GL11.glBegin(GL_LINE_STRIP);
+        glLineWidth(1.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glBegin(GL_LINE_STRIP);
         {
             for (Coordinate2D coordinate : coordinates) {
-                GL11.glVertex2d(coordinate.x, coordinate.y);
+                glVertex2d(coordinate.x, coordinate.y);
             }
         }
-        GL11.glEnd();
+        glEnd();
     }
 
     private void renderPopulationPoints() {
         List<Coordinate2D> coordinates = getProportionalPopulationPoints();
-        GL11.glPointSize(5.0f);
-        GL11.glColor3f(1.0f, 0.0f, 0.0f);
-        GL11.glBegin(GL_POINTS);
+        glPointSize(5.0f);
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glBegin(GL_POINTS);
         {
             for (Coordinate2D coordinate : coordinates) {
-                GL11.glVertex2d(coordinate.x, coordinate.y);
+                glVertex2d(coordinate.x, coordinate.y);
             }
         }
-        GL11.glEnd();
+        glEnd();
     }
 
     private void renderHUD() {
@@ -244,7 +330,7 @@ public class ApplicationDisplay {
         renderGeneticAlgorithmDetails();
     }
 
-    private void drawString(String sentence, Color color, Coordinate2D position, TrueTypeFont font) {
+    private void drawString(String sentence, Color color, Coordinate2D position, UnicodeFont font) {
         glEnable(GL_TEXTURE_2D);
         Color.white.bind();
         font.drawString((float) position.x, (float) position.y, sentence, color);
@@ -311,8 +397,29 @@ public class ApplicationDisplay {
         }
         return coordinates;
     }
+    
+    /**
+     * This function converts the absolute coordinates to relative coordinates.
+     * The boundaries consists on a 4-position double array in which the first two arguments are coordinates of the
+     * top left boundaries of a square, and the two last are the bottom right boundaries. The coordinates are also
+     * subjected to two proportional values, given by yMin and yMax.
+     * @param coordValues
+     * @param boundaries
+     * @param yMin 
+     * @param yMax
+     * @return 
+     */
+    private List<Coordinate2D> getProportionalCoordinates(List<Coordinate2D> coordValues, double[] boundaries, double yMin, double yMax) {
+        List<Coordinate2D> relativeValues = new ArrayList<>();
+        return null;
+    }
 
     private void renderGeneticAlgorithmDetails() {
+        renderStats();
+        renderHistoricalGraphic();
+    }
+    
+    private void renderStats() {
         Coordinate2D positioning = new Coordinate2D(HUD_BOUND_POSITION.x, HUD_BOUND_POSITION.y);
         drawString("OBJECTIVE FUNCTION: " + heuristic.getObjectiveFunction().getFormattedEquation(),
                 Color.white, positioning, consoleFont12);
@@ -323,7 +430,13 @@ public class ApplicationDisplay {
         positioning.y += 12;
         drawString("POPULATION: " + stats.getPopulation().length, Color.white, positioning, consoleFont12);
         positioning.y += 12;
-        drawString("GENERATION: " + stats.getGeneration(), Color.white, positioning, consoleFont12);
+        drawString("GENERATION: " + stats.getGeneration(), Color.yellow, positioning, consoleFont12);
+    }
+    
+    private void renderHistoricalGraphic() {
+        drawLines(HISTORIC_CHART_DIVISIONS[0], 1, Color.white, true);
+        drawLines(HISTORIC_CHART_DIVISIONS[1], 1, Color.white, false);
+        List<Coordinate2D> lines = new ArrayList<>();
     }
 
     private void renderInterface() {
