@@ -61,8 +61,10 @@ public class GeneticAlgorithm {
     }
 
     private void fireEvent(GeneticAlgorithmStats stats) {
-        for (GeneticAlgorithmEventListener listener : listeners) {
-            listener.generationEvolved(stats);
+        if (listeners != null) {
+            for (GeneticAlgorithmEventListener listener : listeners) {
+                listener.generationEvolved(stats);
+            }
         }
     }
 
@@ -291,6 +293,30 @@ public class GeneticAlgorithm {
 
     public void setBoundaryCap(boolean applyBoundaryCap) {
         this.applyBoundaryCap = applyBoundaryCap;
+    }
+
+    public float getLeftIntervalValue() {
+        return center - range/2f;
+    }
+    
+    public float getRightIntervalValue() {
+        return center + range/2f;
+    }
+    
+    public int getPopulationNumber() {
+        return population.length;
+    }
+    
+    public int getNumberOfGenes() {
+        return numberOfGenes;
+    }
+    
+    public int getBinaryPrecision() {
+        return binaryPrecision;
+    }
+    
+    public void terminate() {
+        listeners = null;
     }
 
 }

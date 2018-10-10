@@ -20,6 +20,7 @@ import static org.lwjgl.opengl.GL11.*;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.UnicodeFont;
 import static ag.core.GeneticAlgorithmStats.*;
+import ag.utils.ThreadUtils;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,6 +51,7 @@ public class ApplicationDisplay {
     private static final char X_AXIS = 'x';
     private static final char Y_AXIS = 'y';
     private static final DecimalFormat decimal = new DecimalFormat("#.##");
+    private Square optionsButton = new Square(new Coordinate2D(20, 40), new Coordinate2D(280, 90));
     private float plotLineWidth = 1.0f;
     private UnicodeFont consoleFont12;
     private UnicodeFont consoleFont8;
@@ -77,8 +79,10 @@ public class ApplicationDisplay {
         markings = new List[2];
         List<Coordinate2D> divisionCoords = new ArrayList<>();
         for (int i = 1; i < HISTORIC_CHART_DIVISIONS; i++) {
-            divisionCoords.add(new Coordinate2D(HISTORIC_CHART_MIN_X + i * (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS, HISTORIC_CHART_MAX_Y));
-            divisionCoords.add(new Coordinate2D(HISTORIC_CHART_MIN_X + i * (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS, HISTORIC_CHART_MIN_Y));
+            divisionCoords.add(new Coordinate2D(HISTORIC_CHART_MIN_X + i
+                    * (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS, HISTORIC_CHART_MAX_Y));
+            divisionCoords.add(new Coordinate2D(HISTORIC_CHART_MIN_X + i
+                    * (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS, HISTORIC_CHART_MIN_Y));
         }
         List<Coordinate2D> limits = new ArrayList<>();
         limits.add(new Coordinate2D(HISTORIC_CHART_MIN_X, HISTORIC_CHART_MIN_Y));
@@ -97,17 +101,28 @@ public class ApplicationDisplay {
     public ApplicationDisplay(String font, GeneticAlgorithm ag) {
         fontName = font;
         heuristic = ag;
-        fitnessHistoric = new ArrayList<>();
-        ag.addGeneticAlgorithmEventListener(new GeneticAlgorithmEventListener() {
+        resetHistoricStats();
+        subscribeToAG();
+        isRunning = true;
+        heuristic.updateStats();
+        startThread();
+    }
+    
+    private void subscribeToAG() {
+        heuristic.addGeneticAlgorithmEventListener(new GeneticAlgorithmEventListener() {
             @Override
             public void generationEvolved(GeneticAlgorithmStats statistics) {
                 updateStats(statistics);
             }
         });
-        isRunning = true;
-        heuristic.updateStats();
     }
 
+    private void resetHistoricStats() {
+        fitnessHistoric = new ArrayList<>();
+        historicalMin = Float.MAX_VALUE;
+        historicalMax = Float.MIN_VALUE;
+    }
+    
     public void updateStats(GeneticAlgorithmStats newStats) {
         stats = newStats;
         if (stats.getSmallestFitness() < historicalMin) {
@@ -201,37 +216,73 @@ public class ApplicationDisplay {
     private void pollInput() {
         pollMouse();
     }
+
     private void pollMouse() {
-        if (Mouse.getX() > PLOT_LEFT_BOUND - 20 && Mouse.getY() > PLOT_DOWN_BOUND + 20) {
+        int x = Mouse.getX();
+        int y = 600 - Mouse.getY();
+        if (x > PLOT_LEFT_BOUND - 20 && x < PLOT_RIGHT_BOUND + 20
+                && y > PLOT_UP_BOUND - 20 && y < PLOT_DOWN_BOUND + 20) {
             plotLineWidth = 3.0f;
         } else {
             plotLineWidth = 1.0f;
         }
+        if (optionsButton.colided(x, y)) {
+            optionsButton.stroke = 3f;
+        } else {
+            optionsButton.stroke = 1f;
+        }
         while (Mouse.next()) {
             if (Mouse.getEventButtonState()) {
                 switch (Mouse.getEventButton()) {
-                //Left button pressed
+                    //Left button pressed
                     case 0:
+                        optionsButton.clickedInside = false;
+                        if (optionsButton.colided(x, y)) {
+                            optionsButton.clickedInside = true;
+                        }
                         break;
-                //Right button pressed
+                    //Right button pressed
                     case 1:
                         break;
                     case 2:
+                        //Middle button pressed
                         showPositionAtConsole();
                         break;
                     default:
                         break;
                 }
-            } else if (Mouse.getEventButton() == 0) {
-                //Left button released
+            } else {
+                switch (Mouse.getEventButton()) {
+                    //Left button released
+                    case 0:
+                        if (optionsButton.hasClickedInside()) {
+                            GeneticAlgorithm newAG = ConfigGeneticAlgorithmOptions.getConfig(heuristic);
+                            if (newAG != null) {
+                                heuristic.terminate();
+                                heuristic = newAG;
+                                resetHistoricStats();
+                            }
+                        }
+                        optionsButton.clickedInside = false;
+                        break;
+                    //Right button released
+                    case 1:
+                        break;
+                    case 2:
+                        //Middle button released
+                        showPositionAtConsole();
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
 
     private void showPositionAtConsole() {
         int x = Mouse.getX();
-        int y = Mouse.getY();
-        System.err.println("Mouse @ X:" + x + " Y:" + (800 - y));
+        int y = 600 - Mouse.getY();
+        System.err.println("Mouse @ X:" + x + " Y:" + y);
     }
 
     private void separateScreen() {
@@ -480,6 +531,23 @@ public class ApplicationDisplay {
     }
 
     private void renderInterface() {
+        renderButtons();
+    }
 
+    private void renderButtons() {
+        drawLines(optionsButton.borderLines, optionsButton.stroke, Color.green, false, true);
+    }
+
+    private void startThread() {
+        Thread agAutoThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (isRunning) {
+                    ThreadUtils.holdOn(1500);
+                    heuristic.evolveOneStep();
+                }
+            }
+        });
+        agAutoThread.start();
     }
 }

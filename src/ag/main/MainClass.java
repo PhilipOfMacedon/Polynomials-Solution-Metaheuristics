@@ -34,17 +34,6 @@ public class MainClass {
         GeneticAlgorithm ag = new GeneticAlgorithm(30, 12, 8, 5.3f, -2.15f, 4, 0.01f, 0.7f, "x^6+8x^5+13x^4-12x^3-2x^2+9x-3", true);
         ApplicationDisplay appDisplay = new ApplicationDisplay("Monospaced", ag);
         //ag.evolve(10);
-        Thread agAutoThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                System.err.println(appDisplay.isRunning);
-                while (appDisplay.isRunning) {
-                    ThreadUtils.holdOn(1500);
-                    ag.evolveOneStep();
-                }
-            }
-        });
-        agAutoThread.start();
         appDisplay.start();
     }
 

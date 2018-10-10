@@ -142,5 +142,10 @@ public final class PolynomialFunction extends ObjectiveFunction {
         }
         return chunks;
     }
+    
+    @Override
+    public boolean isValid() {
+        return terms != null && !terms.isEmpty();
+    }
 
 }

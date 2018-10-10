@@ -24,5 +24,7 @@ public abstract class ObjectiveFunction {
     public abstract String getFormattedEquation();
     
     public abstract String getUnicodeEquation();
+    
+    public abstract boolean isValid();
 
 }
