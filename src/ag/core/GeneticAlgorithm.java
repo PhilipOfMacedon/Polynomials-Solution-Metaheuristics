@@ -138,23 +138,20 @@ public class GeneticAlgorithm {
         }
         children[0] = subjectToMutation(children[0]);
         children[1] = subjectToMutation(children[1]);
-        children = normalizeChildren(children);
+        children[0] = normalizeChild(children[0], parent1);
+        children[1] = normalizeChild(children[1], parent2);
         return children;
     }
 
-    private float[] normalizeChildren(float[] children) {
+    private float normalizeChild(float child, float parent) {
         if (applyBoundaryCap) {
             float lowerBound = -range / 2f + center;
-            float upperBound = range/2f + center;
-            for (int i = 0; i < children.length; i++) {
-                if (children[i] < lowerBound) {
-                    children[i] = lowerBound;
-                } else if (children[i] > upperBound) {
-                    children[i] = upperBound;
-                }
+            float upperBound = range / 2f + center;
+            if (child < lowerBound || child > upperBound) {
+                child = parent;
             }
         }
-        return children;
+        return child;
     }
 
     private float subjectToMutation(float subject) {

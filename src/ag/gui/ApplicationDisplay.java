@@ -41,10 +41,16 @@ public class ApplicationDisplay {
     private static final double PLOT_DOWN_BOUND = 280D;
     private static final Coordinate2D HUD_BOUND_POSITION = new Coordinate2D(20D, 320D);
     private static final List<Coordinate2D> DIVISION_LINES = loadDivisionCoords();
-    private static final List<Coordinate2D>[] HISTORIC_CHART_DIVISIONS = loadChartLineDivisions();
+    private static final List<Coordinate2D>[] HISTORIC_CHART_STRUCTURE_COORDINATES = loadChartLineDivisions();
+    private static final double HISTORIC_CHART_MIN_X = 180;
+    private static final double HISTORIC_CHART_MAX_X = 780;
+    private static final double HISTORIC_CHART_MIN_Y = 360;
+    private static final double HISTORIC_CHART_MAX_Y = 580;
+    private static final int HISTORIC_CHART_DIVISIONS = 22;
     private static final char X_AXIS = 'x';
     private static final char Y_AXIS = 'y';
     private static final DecimalFormat decimal = new DecimalFormat("#.##");
+    private float plotLineWidth = 1.0f;
     private UnicodeFont consoleFont12;
     private UnicodeFont consoleFont8;
     private String fontName;
@@ -65,29 +71,24 @@ public class ApplicationDisplay {
         divisionCoords.add(new Coordinate2D(300d, 300d));
         return divisionCoords;
     }
-    
+
     private static List<Coordinate2D>[] loadChartLineDivisions() {
         List<Coordinate2D>[] markings;
         markings = new List[2];
         List<Coordinate2D> divisionCoords = new ArrayList<>();
-        int minX = 180;
-        int maxX = 780;
-        int minY = 360;
-        int maxY = 580;
-        int divisions = 22;
-        for (int i = 1; i < divisions; i++) {
-            divisionCoords.add(new Coordinate2D(minX + i * (maxX-minX)/divisions, maxY));
-            divisionCoords.add(new Coordinate2D(minX + i * (maxX-minX)/divisions, minY));
+        for (int i = 1; i < HISTORIC_CHART_DIVISIONS; i++) {
+            divisionCoords.add(new Coordinate2D(HISTORIC_CHART_MIN_X + i * (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS, HISTORIC_CHART_MAX_Y));
+            divisionCoords.add(new Coordinate2D(HISTORIC_CHART_MIN_X + i * (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS, HISTORIC_CHART_MIN_Y));
         }
         List<Coordinate2D> limits = new ArrayList<>();
-        limits.add(new Coordinate2D(minX, minY));
-        limits.add(new Coordinate2D(maxX, minY));
-        limits.add(new Coordinate2D(minX, maxY));
-        limits.add(new Coordinate2D(maxX, maxY));
-        limits.add(new Coordinate2D(minX, minY));
-        limits.add(new Coordinate2D(minX, maxY));
-        limits.add(new Coordinate2D(maxX, minY));
-        limits.add(new Coordinate2D(maxX, maxY));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MIN_X, HISTORIC_CHART_MIN_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MAX_X, HISTORIC_CHART_MIN_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MIN_X, HISTORIC_CHART_MAX_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MAX_X, HISTORIC_CHART_MAX_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MIN_X, HISTORIC_CHART_MIN_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MIN_X, HISTORIC_CHART_MAX_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MAX_X, HISTORIC_CHART_MIN_Y));
+        limits.add(new Coordinate2D(HISTORIC_CHART_MAX_X, HISTORIC_CHART_MAX_Y));
         markings[0] = divisionCoords;
         markings[1] = limits;
         return markings;
@@ -119,9 +120,10 @@ public class ApplicationDisplay {
         historicPoint.put("min", stats.getSmallestFitness());
         historicPoint.put("max", stats.getBiggestFitness());
         historicPoint.put("average", stats.getAverageFitness());
-        if (fitnessHistoric.size() == 20) fitnessHistoric.remove(0);
+        if (fitnessHistoric.size() == HISTORIC_CHART_DIVISIONS + 1) {
+            fitnessHistoric.remove(0);
+        }
         fitnessHistoric.add(historicPoint);
-        System.out.println("DONE!");
     }
 
     public void start() {
@@ -197,17 +199,31 @@ public class ApplicationDisplay {
     }
 
     private void pollInput() {
+        pollMouse();
+    }
+    private void pollMouse() {
+        if (Mouse.getX() > PLOT_LEFT_BOUND - 20 && Mouse.getY() > PLOT_DOWN_BOUND + 20) {
+            plotLineWidth = 3.0f;
+        } else {
+            plotLineWidth = 1.0f;
+        }
         while (Mouse.next()) {
             if (Mouse.getEventButtonState()) {
-                if (Mouse.getEventButton() == 0) {
-                    //Left button pressed
-                } else if (Mouse.getEventButton() == 1) {
-                    //Right button pressed
-                } else if (Mouse.getEventButton() == 2) {
-                    showPositionAtConsole();
+                switch (Mouse.getEventButton()) {
+                //Left button pressed
+                    case 0:
+                        break;
+                //Right button pressed
+                    case 1:
+                        break;
+                    case 2:
+                        showPositionAtConsole();
+                        break;
+                    default:
+                        break;
                 }
             } else if (Mouse.getEventButton() == 0) {
-                System.out.println("Left button released");
+                //Left button released
             }
         }
     }
@@ -221,7 +237,7 @@ public class ApplicationDisplay {
     private void separateScreen() {
         drawQuad(new Coordinate2D(300, 0), new Coordinate2D(800, 300), new Color(0f, 0f, 0.25f));
         //drawQuad(new Coordinate2D(180d, 360d), new Coordinate2D(780d, 580d), new Color(0f, 0f, 0.25f));
-        drawLines(DIVISION_LINES, 3f, Color.white, false);
+        drawLines(DIVISION_LINES, 3f, Color.white, false, false);
     }
 
     private void drawQuad(Coordinate2D upperLeft, Coordinate2D lowerRight, Color background) {
@@ -236,15 +252,19 @@ public class ApplicationDisplay {
         glEnd();
     }
 
-    private void drawLines(List<Coordinate2D> lineCoords, float lineWidth, Color color, boolean dotted) {
+    private void drawLines(List<Coordinate2D> lineCoords, float lineWidth, Color color, boolean dotted, boolean stripped) {
         if (dotted) {
             glPushAttrib(GL_ENABLE_BIT);
-            glLineStipple(1, (short)0x0001);
+            glLineStipple(1, (short) 0x0001);
             glEnable(GL_LINE_STIPPLE);
         }
         glColor3f(color.r, color.g, color.b);
         glLineWidth(lineWidth);
-        glBegin(GL_LINES);
+        if (stripped) {
+            glBegin(GL_LINE_STRIP);
+        } else {
+            glBegin(GL_LINES);
+        }
         {
             for (Coordinate2D coord : lineCoords) {
                 glVertex2d(coord.x, coord.y);
@@ -301,7 +321,7 @@ public class ApplicationDisplay {
 
     private void plotGraphic() {
         List<Coordinate2D> coordinates = getProportionalPlotCoords();
-        glLineWidth(1.0f);
+        glLineWidth(plotLineWidth);
         glColor3f(1.0f, 1.0f, 1.0f);
         glBegin(GL_LINE_STRIP);
         {
@@ -397,28 +417,27 @@ public class ApplicationDisplay {
         }
         return coordinates;
     }
-    
-    /**
-     * This function converts the absolute coordinates to relative coordinates.
-     * The boundaries consists on a 4-position double array in which the first two arguments are coordinates of the
-     * top left boundaries of a square, and the two last are the bottom right boundaries. The coordinates are also
-     * subjected to two proportional values, given by yMin and yMax.
-     * @param coordValues
-     * @param boundaries
-     * @param yMin 
-     * @param yMax
-     * @return 
-     */
-    private List<Coordinate2D> getProportionalCoordinates(List<Coordinate2D> coordValues, double[] boundaries, double yMin, double yMax) {
+
+    private List<Coordinate2D> getHistoricDataChartCoords(double[] absolutValues) {
         List<Coordinate2D> relativeValues = new ArrayList<>();
-        return null;
+        double x;
+        double y;
+        double step = (HISTORIC_CHART_MAX_X - HISTORIC_CHART_MIN_X) / HISTORIC_CHART_DIVISIONS;
+        int count = absolutValues.length - 1;
+        for (double absoluteValue : absolutValues) {
+            x = HISTORIC_CHART_MAX_X - (count--) * step;
+            y = Coordinate2D.getRelativePosition(HISTORIC_CHART_MIN_Y + 20,
+                    HISTORIC_CHART_MAX_Y - 20, 1 - Coordinate2D.getRatio(historicalMin, historicalMax, absoluteValue));
+            relativeValues.add(new Coordinate2D(x, y));
+        }
+        return relativeValues;
     }
 
     private void renderGeneticAlgorithmDetails() {
         renderStats();
         renderHistoricalGraphic();
     }
-    
+
     private void renderStats() {
         Coordinate2D positioning = new Coordinate2D(HUD_BOUND_POSITION.x, HUD_BOUND_POSITION.y);
         drawString("OBJECTIVE FUNCTION: " + heuristic.getObjectiveFunction().getFormattedEquation(),
@@ -431,12 +450,33 @@ public class ApplicationDisplay {
         drawString("POPULATION: " + stats.getPopulation().length, Color.white, positioning, consoleFont12);
         positioning.y += 12;
         drawString("GENERATION: " + stats.getGeneration(), Color.yellow, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("MIN FITNESS: " + decimal.format(historicalMin), Color.red, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("MAX FITNESS: " + decimal.format(historicalMax), Color.green, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("LOW FITNESS: " + decimal.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("min")), Color.red, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("HIGH FITNESS: " + decimal.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("max")), Color.green, positioning, consoleFont12);
+        positioning.y += 12;
+        drawString("AVG FITNESS: " + decimal.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("average")), Color.cyan, positioning, consoleFont12);
     }
-    
+
     private void renderHistoricalGraphic() {
-        drawLines(HISTORIC_CHART_DIVISIONS[0], 1, Color.white, true);
-        drawLines(HISTORIC_CHART_DIVISIONS[1], 1, Color.white, false);
-        List<Coordinate2D> lines = new ArrayList<>();
+        drawLines(HISTORIC_CHART_STRUCTURE_COORDINATES[0], 1, new Color(0.1f, 0.1f, 0.1f), false, false);
+        drawLines(HISTORIC_CHART_STRUCTURE_COORDINATES[1], 1, Color.white, false, false);
+        double[] absoluteLowestFitnesses = new double[fitnessHistoric.size()];
+        double[] absoluteHighestFitnesses = new double[fitnessHistoric.size()];
+        double[] absoluteAverageFitnesses = new double[fitnessHistoric.size()];
+        int count = 0;
+        for (Map<String, Double> registry : fitnessHistoric) {
+            absoluteLowestFitnesses[count] = registry.get("min");
+            absoluteHighestFitnesses[count] = registry.get("max");
+            absoluteAverageFitnesses[count++] = registry.get("average");
+        }
+        drawLines(getHistoricDataChartCoords(absoluteLowestFitnesses), 1f, Color.red, false, true);
+        drawLines(getHistoricDataChartCoords(absoluteHighestFitnesses), 1f, Color.green, false, true);
+        drawLines(getHistoricDataChartCoords(absoluteAverageFitnesses), 1f, Color.cyan, false, true);
     }
 
     private void renderInterface() {
