@@ -29,7 +29,9 @@ public class ConfigGeneticAlgorithmOptions extends javax.swing.JDialog {
 
     private void initializeFields(GeneticAlgorithm previousConf) {
         if (previousConf != null) {
-            fieldFunction.setText(previousConf.getObjectiveFunction().getFormattedEquation().trim());
+            String equation = previousConf.getObjectiveFunction().getFormattedEquation().replaceAll(" ", "");
+            equation = equation.substring(0, equation.length() - 2);
+            fieldFunction.setText(equation);
             spinMin.setValue(previousConf.getLeftIntervalValue());
             spinMax.setValue(previousConf.getRightIntervalValue());
             spinPop.setValue(previousConf.getPopulationNumber());

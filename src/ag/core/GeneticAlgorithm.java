@@ -16,7 +16,7 @@ import static ag.core.GeneticAlgorithmStats.PLOT_RESOLUTION;
  *
  * @author filipe
  */
-public class GeneticAlgorithm {
+public final class GeneticAlgorithm {
 
     private boolean applyBoundaryCap;
     private float[] population;
@@ -28,6 +28,7 @@ public class GeneticAlgorithm {
     private ObjectiveFunction objectiveFunction;
     private float range;
     private float center;
+    private int popNumber;
     private double smallestOFValue;
     private double biggestOFValue;
     private boolean changedObjectiveFunction;
@@ -49,7 +50,7 @@ public class GeneticAlgorithm {
         this.numberOfCrossoverPoints = crossoverPoints;
         this.mutationRatio = mutationRatio;
         this.crossoverRatio = crossoverRatio;
-        population = BinaryGeneticUtils.getRandomizedFloatPopulation(populationSize, range, centralElement);
+        popNumber = populationSize;
         objectiveFunction = new PolynomialFunction(function);
         this.range = range;
         this.center = centralElement;
@@ -57,6 +58,7 @@ public class GeneticAlgorithm {
         changedObjectiveFunction = true;
         listeners = new ArrayList<>();
         generation = 0;
+        randomizePopulation();
         updateStats();
     }
 
@@ -70,6 +72,10 @@ public class GeneticAlgorithm {
 
     public void addGeneticAlgorithmEventListener(GeneticAlgorithmEventListener listener) {
         listeners.add(listener);
+    }
+    
+    public void randomizePopulation() {
+        population = BinaryGeneticUtils.getRandomizedFloatPopulation(popNumber, range, center);
     }
 
     private double[] loadXValues() {

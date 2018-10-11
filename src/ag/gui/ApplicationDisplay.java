@@ -6,7 +6,6 @@
 package ag.gui;
 
 import ag.core.GeneticAlgorithm;
-import ag.core.GeneticAlgorithmEventListener;
 import ag.core.GeneticAlgorithmStats;
 import ag.utils.Coordinate2D;
 import java.awt.Font;
@@ -15,7 +14,6 @@ import java.util.List;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
-import org.lwjgl.opengl.GL11;
 import static org.lwjgl.opengl.GL11.*;
 import org.newdawn.slick.Color;
 import org.newdawn.slick.UnicodeFont;
@@ -24,8 +22,7 @@ import ag.utils.ThreadUtils;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import org.lwjgl.input.Mouse;
 import org.newdawn.slick.SlickException;
 import org.newdawn.slick.font.effects.ColorEffect;
@@ -50,12 +47,26 @@ public class ApplicationDisplay {
     private static final int HISTORIC_CHART_DIVISIONS = 22;
     private static final char X_AXIS = 'x';
     private static final char Y_AXIS = 'y';
-    private static final DecimalFormat decimal = new DecimalFormat("#.##");
-    private Square optionsButton = new Square(new Coordinate2D(20, 40), new Coordinate2D(280, 90));
+    private static final DecimalFormat DECIMAL = new DecimalFormat("#.##");
+    private final OpenGLButton optionsButton = new OpenGLButton(new Coordinate2D(20, 40), 
+            new Coordinate2D(280, 90), new Coordinate2D(116, 53), Color.green, Color.black);
+    private final OpenGLButton aboutButton = new OpenGLButton(new Coordinate2D(20, 210), 
+            new Coordinate2D(280, 260), new Coordinate2D(125, 223), Color.green, Color.black);
+    private final OpenGLButton decSpeedButton = new OpenGLButton(new Coordinate2D(20, 560), 
+            new Coordinate2D(40, 580), new Coordinate2D(25, 558), Color.green, Color.black);
+    private final OpenGLButton incSpeedButton = new OpenGLButton(new Coordinate2D(50, 560), 
+            new Coordinate2D(70, 580), new Coordinate2D(55, 558), Color.green, Color.black);
+    private final OpenGLButton randomizeButton = new OpenGLButton(new Coordinate2D(140, 560), 
+            new Coordinate2D(160, 580), new Coordinate2D(145, 558), Color.green, Color.black);
+    private final Coordinate2D logoCoordinate1 = new Coordinate2D(80, 120);
+    private final Coordinate2D logoCoordinate2 = new Coordinate2D(82, 145);
+    private final Coordinate2D logoCoordinate3 = new Coordinate2D(155, 145);
+    private long waitingTime = 1500L;
     private float plotLineWidth = 1.0f;
     private UnicodeFont consoleFont12;
-    private UnicodeFont consoleFont8;
-    private String fontName;
+    private UnicodeFont consoleFont16;
+    private UnicodeFont consoleFont24;
+    private final String fontName;
     private GeneticAlgorithmStats stats;
     private GeneticAlgorithm heuristic;
     private List<Map<String, Double>> fitnessHistoric;
@@ -102,18 +113,14 @@ public class ApplicationDisplay {
         fontName = font;
         heuristic = ag;
         resetHistoricStats();
-        subscribeToAG();
         isRunning = true;
         heuristic.updateStats();
         startThread();
     }
-    
+
     private void subscribeToAG() {
-        heuristic.addGeneticAlgorithmEventListener(new GeneticAlgorithmEventListener() {
-            @Override
-            public void generationEvolved(GeneticAlgorithmStats statistics) {
-                updateStats(statistics);
-            }
+        heuristic.addGeneticAlgorithmEventListener((GeneticAlgorithmStats statistics) -> {
+            updateStats(statistics);
         });
     }
 
@@ -121,8 +128,9 @@ public class ApplicationDisplay {
         fitnessHistoric = new ArrayList<>();
         historicalMin = Float.MAX_VALUE;
         historicalMax = Float.MIN_VALUE;
+        subscribeToAG();
     }
-    
+
     public void updateStats(GeneticAlgorithmStats newStats) {
         stats = newStats;
         if (stats.getSmallestFitness() < historicalMin) {
@@ -167,7 +175,7 @@ public class ApplicationDisplay {
             Display.setVSyncEnabled(true);
             Display.setTitle("Polynomial Genetic Machine V1.0");
         } catch (LWJGLException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, e.getCause(), "Aw shit", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
         }
 
@@ -197,13 +205,17 @@ public class ApplicationDisplay {
             consoleFont12 = new UnicodeFont(new Font(fontName, Font.BOLD, 12));
             consoleFont12.getEffects().add(new ColorEffect(java.awt.Color.white));
             consoleFont12.addAsciiGlyphs();
-            consoleFont12.loadGlyphs(); // load glyphs from font file
-            consoleFont8 = new UnicodeFont(new Font(fontName, Font.BOLD, 8));
-            consoleFont8.getEffects().add(new ColorEffect(java.awt.Color.white));
-            consoleFont8.addAsciiGlyphs();
-            consoleFont8.loadGlyphs(); // load glyphs from font file
+            consoleFont12.loadGlyphs();
+            consoleFont16 = new UnicodeFont(new Font(fontName, Font.BOLD, 16));
+            consoleFont16.getEffects().add(new ColorEffect(java.awt.Color.white));
+            consoleFont16.addAsciiGlyphs();
+            consoleFont16.loadGlyphs();
+            consoleFont24 = new UnicodeFont(new Font(fontName, Font.BOLD, 24));
+            consoleFont24.getEffects().add(new ColorEffect(java.awt.Color.white));
+            consoleFont24.addAsciiGlyphs();
+            consoleFont24.loadGlyphs();
         } catch (SlickException ex) {
-            ex.printStackTrace();
+            JOptionPane.showMessageDialog(null, ex.getCause(), "Aw shit", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -220,6 +232,17 @@ public class ApplicationDisplay {
     private void pollMouse() {
         int x = Mouse.getX();
         int y = 600 - Mouse.getY();
+        evaluateMouseHover(x, y);
+        while (Mouse.next()) {
+            if (Mouse.getEventButtonState()) {
+                evaluateMouseButtonPressed(x, y);
+            } else {
+                evaluateMouseButtonReleased(x, y);
+            }
+        }
+    }
+
+    private void evaluateMouseHover(int x, int y) {
         if (x > PLOT_LEFT_BOUND - 20 && x < PLOT_RIGHT_BOUND + 20
                 && y > PLOT_UP_BOUND - 20 && y < PLOT_DOWN_BOUND + 20) {
             plotLineWidth = 3.0f;
@@ -228,54 +251,112 @@ public class ApplicationDisplay {
         }
         if (optionsButton.colided(x, y)) {
             optionsButton.stroke = 3f;
+            optionsButton.bgColor = new Color(0.0f, 0.2f, 0.0f);
         } else {
             optionsButton.stroke = 1f;
+            optionsButton.bgColor = Color.black;
         }
-        while (Mouse.next()) {
-            if (Mouse.getEventButtonState()) {
-                switch (Mouse.getEventButton()) {
-                    //Left button pressed
-                    case 0:
-                        optionsButton.clickedInside = false;
-                        if (optionsButton.colided(x, y)) {
-                            optionsButton.clickedInside = true;
-                        }
-                        break;
-                    //Right button pressed
-                    case 1:
-                        break;
-                    case 2:
-                        //Middle button pressed
-                        showPositionAtConsole();
-                        break;
-                    default:
-                        break;
+        if (aboutButton.colided(x, y)) {
+            aboutButton.stroke = 3f;
+            aboutButton.bgColor = new Color(0.0f, 0.2f, 0.0f);
+        } else {
+            aboutButton.stroke = 1f;
+            aboutButton.bgColor = Color.black;
+        }
+        if (decSpeedButton.colided(x, y)) {
+            decSpeedButton.stroke = 2f;
+            decSpeedButton.bgColor = new Color(0.2f, 0.1f, 0.0f);
+        } else {
+            decSpeedButton.stroke = 1f;
+            decSpeedButton.bgColor = Color.black;
+        }
+        if (incSpeedButton.colided(x, y)) {
+            incSpeedButton.stroke = 2f;
+            incSpeedButton.bgColor = new Color(0.0f, 0.2f, 0.2f);
+        } else {
+            incSpeedButton.stroke = 1f;
+            incSpeedButton.bgColor = Color.black;
+        }
+        if (randomizeButton.colided(x, y)) {
+            randomizeButton.stroke = 2f;
+            randomizeButton.bgColor = new Color(0.2f, 0.0f, 0.0f);
+        } else {
+            randomizeButton.stroke = 1f;
+            randomizeButton.bgColor = Color.black;
+        }
+    }
+
+    private void evaluateMouseButtonPressed(int x, int y) {
+        switch (Mouse.getEventButton()) {
+            //Left button pressed
+            case 0:
+                optionsButton.clickedInside = false;
+                aboutButton.clickedInside = false;
+                randomizeButton.clickedInside = false;
+                if (optionsButton.colided(x, y)) {
+                    optionsButton.clickedInside = true;
+                } else if (aboutButton.colided(x, y)) {
+                    aboutButton.clickedInside = true;
+                } else if (decSpeedButton.colided(x, y)) {
+                    decUpdateSpeed();
+                } else if (incSpeedButton.colided(x, y)) {
+                    incUpdateSpeed();
+                } else if (randomizeButton.colided(x, y)) {
+                    randomizeButton.clickedInside = true;
                 }
-            } else {
-                switch (Mouse.getEventButton()) {
-                    //Left button released
-                    case 0:
-                        if (optionsButton.hasClickedInside()) {
-                            GeneticAlgorithm newAG = ConfigGeneticAlgorithmOptions.getConfig(heuristic);
-                            if (newAG != null) {
-                                heuristic.terminate();
-                                heuristic = newAG;
-                                resetHistoricStats();
-                            }
-                        }
-                        optionsButton.clickedInside = false;
-                        break;
-                    //Right button released
-                    case 1:
-                        break;
-                    case 2:
-                        //Middle button released
-                        showPositionAtConsole();
-                        break;
-                    default:
-                        break;
+                break;
+            //Right button pressed
+            case 1:
+                break;
+            case 2:
+                //Middle button pressed
+                showPositionAtConsole();
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void evaluateMouseButtonReleased(int x, int y) {
+        switch (Mouse.getEventButton()) {
+            //Left button released
+            case 0:
+                if (optionsButton.colided(x, y) && optionsButton.hasClickedInside()) {
+                    GeneticAlgorithm newAG = ConfigGeneticAlgorithmOptions.getConfig(heuristic);
+                    if (newAG != null) {
+                        heuristic.terminate();
+                        heuristic = newAG;
+                        resetHistoricStats();
+                    }
+                } else if (aboutButton.colided(x, y) && aboutButton.hasClickedInside()) {
+                    HelpDialog.showMessage();
+                } else if (randomizeButton.colided(x, y) && randomizeButton.hasClickedInside()) {
+                    heuristic.randomizePopulation();
                 }
-            }
+                optionsButton.clickedInside = false;
+                randomizeButton.clickedInside = false;
+                break;
+            //Right button released
+            case 1:
+                break;
+            case 2:
+                //Middle button released
+                showPositionAtConsole();
+                break;
+            default:
+                break;
+        }
+    }
+    
+    private void incUpdateSpeed() {
+        if (waitingTime >= 500) {
+            waitingTime -= 250;
+        }
+    }
+    
+    private void decUpdateSpeed() {
+        if (waitingTime <= 1250) {
+            waitingTime += 250;
         }
     }
 
@@ -399,6 +480,7 @@ public class ApplicationDisplay {
     private void renderHUD() {
         renderObjectiveFunction();
         renderGeneticAlgorithmDetails();
+        renderLogo();
     }
 
     private void drawString(String sentence, Color color, Coordinate2D position, UnicodeFont font) {
@@ -494,23 +576,25 @@ public class ApplicationDisplay {
         drawString("OBJECTIVE FUNCTION: " + heuristic.getObjectiveFunction().getFormattedEquation(),
                 Color.white, positioning, consoleFont12);
         positioning.y += 12;
-        drawString("MIN x: " + decimal.format(stats.getXValues()[0]), Color.white, positioning, consoleFont12);
+        drawString("MIN x: " + DECIMAL.format(stats.getXValues()[0]), Color.white, positioning, consoleFont12);
         positioning.y += 12;
-        drawString("MAX x: " + decimal.format(stats.getXValues()[PLOT_RESOLUTION]), Color.white, positioning, consoleFont12);
+        drawString("MAX x: " + DECIMAL.format(stats.getXValues()[PLOT_RESOLUTION]), Color.white, positioning, consoleFont12);
         positioning.y += 12;
         drawString("POPULATION: " + stats.getPopulation().length, Color.white, positioning, consoleFont12);
         positioning.y += 12;
         drawString("GENERATION: " + stats.getGeneration(), Color.yellow, positioning, consoleFont12);
-        positioning.y += 12;
-        drawString("MIN FITNESS: " + decimal.format(historicalMin), Color.red, positioning, consoleFont12);
-        positioning.y += 12;
-        drawString("MAX FITNESS: " + decimal.format(historicalMax), Color.green, positioning, consoleFont12);
-        positioning.y += 12;
-        drawString("LOW FITNESS: " + decimal.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("min")), Color.red, positioning, consoleFont12);
-        positioning.y += 12;
-        drawString("HIGH FITNESS: " + decimal.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("max")), Color.green, positioning, consoleFont12);
-        positioning.y += 12;
-        drawString("AVG FITNESS: " + decimal.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("average")), Color.cyan, positioning, consoleFont12);
+        if (!fitnessHistoric.isEmpty()) {
+            positioning.y += 12;
+            drawString("MIN FITNESS: " + DECIMAL.format(historicalMin), Color.orange, positioning, consoleFont12);
+            positioning.y += 12;
+            drawString("MAX FITNESS: " + DECIMAL.format(historicalMax), new Color(0.2f, 1.0f, 0.3f), positioning, consoleFont12);
+            positioning.y += 12;
+            drawString("LOW FITNESS: " + DECIMAL.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("min")), Color.red, positioning, consoleFont12);
+            positioning.y += 12;
+            drawString("HIGH FITNESS: " + DECIMAL.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("max")), Color.green, positioning, consoleFont12);
+            positioning.y += 12;
+            drawString("AVG FITNESS: " + DECIMAL.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("average")), Color.cyan, positioning, consoleFont12);
+        }
     }
 
     private void renderHistoricalGraphic() {
@@ -530,20 +614,36 @@ public class ApplicationDisplay {
         drawLines(getHistoricDataChartCoords(absoluteAverageFitnesses), 1f, Color.cyan, false, true);
     }
 
+    private void renderLogo() {
+        drawString("POLYNOMIAL", Color.green, logoCoordinate1, consoleFont24);
+        drawString("GENETIC", Color.orange, logoCoordinate2, consoleFont16);
+        drawString("MACHINE", Color.orange, logoCoordinate3, consoleFont16);
+    }
+    
     private void renderInterface() {
         renderButtons();
     }
 
     private void renderButtons() {
-        drawLines(optionsButton.borderLines, optionsButton.stroke, Color.green, false, true);
+        drawButton(optionsButton, "OPTIONS");
+        drawButton(aboutButton, "ABOUT");
+        drawButton(decSpeedButton, "-");
+        drawButton(incSpeedButton, "+");
+        drawButton(randomizeButton, "R");
     }
 
+    private void drawButton(OpenGLButton button, String text) {
+        drawQuad(button.upperLeft, button.lowerRight, button.bgColor);
+        drawLines(button.borderLines, button.stroke, Color.green, false, true);
+        drawString(text, Color.green, button.textPosition, consoleFont16);
+    }
+    
     private void startThread() {
         Thread agAutoThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 while (isRunning) {
-                    ThreadUtils.holdOn(1500);
+                    ThreadUtils.holdOn(waitingTime);
                     heuristic.evolveOneStep();
                 }
             }
