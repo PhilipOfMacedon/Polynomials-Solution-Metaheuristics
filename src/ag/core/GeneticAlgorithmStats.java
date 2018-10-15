@@ -17,6 +17,7 @@ public class GeneticAlgorithmStats {
     private final ObjectiveFunction function;
     private final float range;
     private final float center;
+    private final float averageIndividual;
     private final double smallestOFValue;
     private final double biggestOFValue;
     private final double smallestFitness;
@@ -30,12 +31,13 @@ public class GeneticAlgorithmStats {
     private double[] yAxis;
 
     public GeneticAlgorithmStats(ObjectiveFunction function, float range, float center, double smallestOFValue,
-            double biggestOFValue, double smallestFitness, double biggestFitness,
+            double biggestOFValue, float averageIndividual, double smallestFitness, double biggestFitness,
             double averageFitness, float[] population, double[] xValues, double[] yValues, int generation) {
         this.generation = generation;
         this.function = function;
         this.range = range;
         this.center = center;
+        this.averageIndividual = averageIndividual;
         this.smallestOFValue = smallestOFValue;
         this.biggestOFValue = biggestOFValue;
         this.smallestFitness = smallestFitness;
@@ -76,6 +78,10 @@ public class GeneticAlgorithmStats {
         return center;
     }
 
+    public float getAverageIndividual() {
+        return averageIndividual;
+    }
+    
     public double getSmallestOFValue() {
         return smallestOFValue;
     }
@@ -125,16 +131,10 @@ public class GeneticAlgorithmStats {
     }
 
     public boolean xRangeCrossesYAxis() {
-        if (xValues[0] * xValues[PLOT_RESOLUTION] < 0) {
-            return true;
-        }
-        return false;
+        return xValues[0] * xValues[PLOT_RESOLUTION] < 0;
     }
 
     public boolean yRangeCrossesXAxis() {
-        if (smallestOFValue * biggestOFValue < 0) {
-            return true;
-        }
-        return false;
+        return smallestOFValue * biggestOFValue < 0;
     }
 }

@@ -173,7 +173,7 @@ public class ApplicationDisplay {
             Display.setDisplayMode(new DisplayMode(width, height));
             Display.create();
             Display.setVSyncEnabled(true);
-            Display.setTitle("Polynomial Genetic Machine V1.0");
+            Display.setTitle("Polynomial Genetic Machine V1.1");
         } catch (LWJGLException e) {
             JOptionPane.showMessageDialog(null, e.getCause(), "Aw shit", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
@@ -595,6 +595,8 @@ public class ApplicationDisplay {
             positioning.y += 12;
             drawString("AVG FITNESS: " + DECIMAL.format(fitnessHistoric.get(fitnessHistoric.size() - 1).get("average")), Color.cyan, positioning, consoleFont12);
         }
+        positioning.y += 24;
+        drawString("AVG X VALUE: " + DECIMAL.format(stats.getAverageIndividual()), Color.magenta, positioning, consoleFont12);
     }
 
     private void renderHistoricalGraphic() {

@@ -73,7 +73,7 @@ public final class GeneticAlgorithm {
     public void addGeneticAlgorithmEventListener(GeneticAlgorithmEventListener listener) {
         listeners.add(listener);
     }
-    
+
     public void randomizePopulation() {
         population = BinaryGeneticUtils.getRandomizedFloatPopulation(popNumber, range, center);
     }
@@ -182,9 +182,7 @@ public final class GeneticAlgorithm {
 
     private int getGeneSource(int index, int[] crossoverPointsArray) {
         for (int i = 0; i < numberOfCrossoverPoints; i++) {
-            if (index >= crossoverPointsArray[i]) {
-                continue;
-            } else {
+            if (index < crossoverPointsArray[i]) {
                 return i;
             }
         }
@@ -212,12 +210,14 @@ public final class GeneticAlgorithm {
     }
 
     public void updateStats() {
-        double average = 0;
+        double averageFitness = 0;
         double smallestFitness = objectiveFunction.getFitness(population[0]);
         double biggestFitness = smallestFitness;
+        float averageIndividual = 0;
         for (int i = 0; i < population.length; i++) {
+            averageIndividual += population[i];
             double fitness = objectiveFunction.getFitness(population[i]);
-            average += fitness;
+            averageFitness += fitness;
             if (fitness < smallestFitness) {
                 smallestFitness = fitness;
             }
@@ -225,12 +225,14 @@ public final class GeneticAlgorithm {
                 biggestFitness = fitness;
             }
         }
-        average /= (double) population.length;
+        averageIndividual /= (float) population.length;
+        averageFitness /= (double) population.length;
         double[] xValues = loadXValues();
         double[] yValues = loadYValues(xValues);
         updateObjectiveFunctionPrecalculatedValues(yValues);
-        GeneticAlgorithmStats stats = new GeneticAlgorithmStats(objectiveFunction, range, center, smallestOFValue,
-                biggestOFValue, smallestFitness, biggestFitness, average, population, xValues, yValues, generation);
+        GeneticAlgorithmStats stats = new GeneticAlgorithmStats(objectiveFunction, range, center,
+                smallestOFValue, biggestOFValue, averageIndividual, smallestFitness, biggestFitness,
+                averageFitness, population, xValues, yValues, generation);
         fireEvent(stats);
     }
 
@@ -302,25 +304,25 @@ public final class GeneticAlgorithm {
     }
 
     public float getLeftIntervalValue() {
-        return center - range/2f;
+        return center - range / 2f;
     }
-    
+
     public float getRightIntervalValue() {
-        return center + range/2f;
+        return center + range / 2f;
     }
-    
+
     public int getPopulationNumber() {
         return population.length;
     }
-    
+
     public int getNumberOfGenes() {
         return numberOfGenes;
     }
-    
+
     public int getBinaryPrecision() {
         return binaryPrecision;
     }
-    
+
     public void terminate() {
         listeners = null;
     }
